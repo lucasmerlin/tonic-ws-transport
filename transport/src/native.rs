@@ -6,6 +6,8 @@ use tonic::transport::server::Connected;
 use tungstenite::{Error as TungsteniteError, Message};
 
 use std::io;
+use hyper_util::client::legacy::connect::Connection;
+use hyper_util::rt::TokioIo;
 
 impl WsConnection {
     pub fn from_combined_channel<S>(ws_stream: S) -> Self
@@ -36,7 +38,7 @@ impl WsConnection {
         let reader = Box::new(tokio_util::io::StreamReader::new(bytes_stream));
         Self {
             sink: Box::new(sink),
-            reader,
+            reader: TokioIo::new(reader),
         }
     }
 }
@@ -53,8 +55,8 @@ impl Connected for WsConnection {
     }
 }
 
-impl hyper::client::connect::Connection for WsConnection {
-    fn connected(&self) -> hyper::client::connect::Connected {
-        hyper::client::connect::Connected::new()
+impl Connection for WsConnection {
+    fn connected(&self) -> hyper_util::client::legacy::connect::Connected {
+        hyper_util::client::legacy::connect::Connected::new()
     }
 }
