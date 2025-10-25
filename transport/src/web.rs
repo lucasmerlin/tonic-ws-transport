@@ -15,7 +15,6 @@ use std::rc::Rc;
 use std::task::{Context, Poll};
 use hyper_util::rt::TokioIo;
 
-#[cfg(not(feature = "native"))]
 pub async fn connect(dst: http::Uri) -> Result<super::WsConnection, Error> {
     use futures_util::{future, stream::TryStreamExt, SinkExt};
 

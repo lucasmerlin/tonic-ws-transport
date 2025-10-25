@@ -20,7 +20,3 @@ pub use self::connector::Connector;
 mod executor;
 pub use self::executor::{Executor, SharedExec};
 
-#[cfg(feature = "_tls-any")]
-mod tls;
-#[cfg(feature = "_tls-any")]
-pub use self::tls::TlsConnector;

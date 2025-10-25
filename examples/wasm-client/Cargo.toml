@@ -9,7 +9,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-tonic-ws-transport = { path = "../../transport", default-features = false, features = ["web"] }
+tonic-ws-transport = { path = "../../transport" }
 
 console_error_panic_hook = "0.1.6"
 js-sys = "0.3.47"

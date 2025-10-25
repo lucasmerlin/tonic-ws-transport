@@ -14,7 +14,7 @@ name = "client"
 path = "src/client.rs"
 
 [dependencies]
-tonic-ws-transport = { path = "../../transport", features = ["native"] }
+tonic-ws-transport = { path = "../../transport", features = [] }
 tonic = { version = "0.14.1", features = ["transport", "codegen"] }
 tonic-prost = "0.14.2"
 prost = "0.14.1"

@@ -27,6 +27,7 @@ pub async fn say_hello() -> String {
         .connect_with_connector(WsConnector::new())
         .await
         .expect("failed to connect");
+
     log::info!("Connected to {}", URL);
 
     let mut client = GreeterClient::new(channel);

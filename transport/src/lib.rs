@@ -1,7 +1,7 @@
 pub(crate) type BoxError = Box<dyn std::error::Error + Send + Sync>;
 pub (crate) type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-#[cfg(feature = "native")]
+#[cfg(not(target_arch = "wasm32"))]
 pub use native::WsConnectionInfo;
 
 use futures_util::{ready, sink::Sink};
@@ -14,25 +14,22 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::io;
 use std::pin::Pin;
-#[cfg(feature = "native")]
+#[cfg(not(target_arch = "wasm32"))]
 use std::sync::Arc;
 use std::task::{Context, Poll};
-// use hyper::rt::ReadBufCursor;
-// use hyper_util::rt::TokioIo;
 
-#[cfg(feature = "native")]
+#[cfg(not(target_arch = "wasm32"))]
 mod native;
-#[cfg(feature = "web")]
+#[cfg(target_arch = "wasm32")]
 mod web;
 pub mod transport;
 
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {
-    #[cfg(any(feature = "native", feature = "web"))]
     #[error(transparent)]
     Tungstenite(#[from] tungstenite::Error),
-    #[cfg(feature = "native")]
+    #[cfg(not(target_arch = "wasm32"))]
     #[error(transparent)]
     InvalidBearerToken(#[from] headers::authorization::InvalidBearerToken),
     #[error("Js error: {0}")]
@@ -45,7 +42,7 @@ impl From<Error> for io::Error {
     }
 }
 
-#[cfg(feature = "web")]
+#[cfg(target_arch = "wasm32")]
 impl From<wasm_bindgen::JsValue> for Error {
     fn from(value: wasm_bindgen::JsValue) -> Self {
         let s = js_sys::JSON::stringify(&value)
@@ -57,7 +54,7 @@ impl From<wasm_bindgen::JsValue> for Error {
 
 #[derive(Clone, Default)]
 pub struct WsConnector {
-    #[cfg(feature = "native")]
+    #[cfg(not(target_arch = "wasm32"))]
     resolve_bearer_token: Option<Arc<dyn Fn() -> String + Sync + Send + 'static>>,
 }
 
@@ -72,7 +69,7 @@ impl WsConnector {
         Default::default()
     }
 
-    #[cfg(feature = "native")]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn with_bearer_resolver(
         resolve_token: impl Fn() -> String + Send + Sync + 'static,
     ) -> Self {
@@ -81,18 +78,17 @@ impl WsConnector {
         }
     }
 
-    #[cfg(any(feature = "native", feature = "web"))]
     async fn connect(&mut self, dst: http::Uri) -> Result<WsConnection, Error> {
         cfg_if::cfg_if! {
-            if #[cfg(feature = "native")] {
+            if #[cfg(not(target_arch = "wasm32"))] {
                 self.connect_native_impl(dst).await
-            } else if #[cfg(feature = "web")] {
+            } else if #[cfg(target_arch = "wasm32")] {
                 web::connect(dst).await
             }
         }
     }
 
-    #[cfg(feature = "native")]
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn connect_native_impl(&mut self, dst: http::Uri) -> Result<WsConnection, Error> {
         use headers::{Authorization, HeaderMapExt};
         use tungstenite::client::IntoClientRequest;
@@ -110,7 +106,6 @@ impl WsConnector {
     }
 }
 
-#[cfg(any(feature = "native", feature = "web"))]
 impl tower::Service<http::Uri> for WsConnector {
     type Response = WsConnection;
     type Error = Error;
@@ -152,7 +147,6 @@ pub struct WsConnection {
     pub(crate) sink: WsConnectionSink,
     #[pin]
     pub(crate) reader: hyper_util::rt::TokioIo<WsConnectionReader>,
-    // pub(crate) reader: WsConnectionReader,
 }
 
 type WsConnectionSink = Box<dyn Sink<Message, Error = Error> + Unpin + Send>;
