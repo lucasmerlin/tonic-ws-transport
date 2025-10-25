@@ -13,6 +13,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
+use hyper_util::rt::TokioIo;
 
 #[cfg(not(feature = "native"))]
 pub async fn connect(dst: http::Uri) -> Result<super::WsConnection, Error> {
@@ -42,7 +43,7 @@ pub async fn connect(dst: http::Uri) -> Result<super::WsConnection, Error> {
 
     Ok(super::WsConnection {
         sink: Box::new(messages_sink),
-        reader: Box::new(tokio_util::io::StreamReader::new(bytes_stream)),
+        reader: TokioIo::new(Box::new(tokio_util::io::StreamReader::new(bytes_stream))),
     })
 }
 

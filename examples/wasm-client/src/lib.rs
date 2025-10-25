@@ -1,7 +1,10 @@
 use hello_world::greeter_client::GreeterClient;
 use hello_world::HelloRequest;
+use std::future::Future;
+use std::pin::Pin;
 
-use tonic_ws_transport::WsConnector;
+use tonic_ws_transport::transport::channel::service::Executor;
+use tonic_ws_transport::{transport, WsConnector};
 use wasm_bindgen::prelude::*;
 
 pub mod hello_world {
@@ -18,8 +21,9 @@ pub fn main() -> Result<(), JsValue> {
 #[wasm_bindgen]
 pub async fn say_hello() -> String {
     const URL: &str = "ws://127.0.0.1:3012";
-    let endpoint = tonic::transport::Endpoint::from_static(URL);
+    let endpoint = transport::channel::Endpoint::from_static(URL);
     let channel = endpoint
+        .executor(WasmBindgenExecutor {})
         .connect_with_connector(WsConnector::new())
         .await
         .expect("failed to connect");
@@ -36,4 +40,12 @@ pub async fn say_hello() -> String {
     log::info!("RESPONSE={:?}", response);
 
     format!("{:?}", response)
+}
+
+struct WasmBindgenExecutor {}
+
+impl Executor<Pin<Box<dyn Future<Output = ()> + Send>>> for WasmBindgenExecutor {
+    fn execute(&self, fut: Pin<Box<dyn Future<Output = ()> + Send>>) {
+        wasm_bindgen_futures::spawn_local(fut);
+    }
 }

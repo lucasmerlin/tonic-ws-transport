@@ -1,3 +1,6 @@
+pub(crate) type BoxError = Box<dyn std::error::Error + Send + Sync>;
+pub (crate) type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
 #[cfg(feature = "native")]
 pub use native::WsConnectionInfo;
 
@@ -14,13 +17,14 @@ use std::pin::Pin;
 #[cfg(feature = "native")]
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use hyper::rt::ReadBufCursor;
-use hyper_util::rt::TokioIo;
+// use hyper::rt::ReadBufCursor;
+// use hyper_util::rt::TokioIo;
 
 #[cfg(feature = "native")]
 mod native;
 #[cfg(feature = "web")]
 mod web;
+pub mod transport;
 
 #[derive(Debug, Error)]
 #[non_exhaustive]
@@ -147,14 +151,15 @@ pub struct WsConnection {
     #[pin]
     pub(crate) sink: WsConnectionSink,
     #[pin]
-    pub(crate) reader: TokioIo<WsConnectionReader>,
+    pub(crate) reader: hyper_util::rt::TokioIo<WsConnectionReader>,
+    // pub(crate) reader: WsConnectionReader,
 }
 
 type WsConnectionSink = Box<dyn Sink<Message, Error = Error> + Unpin + Send>;
 type WsConnectionReader = Box<dyn AsyncRead + Unpin + Send>;
 
 impl hyper::rt::Read for WsConnection {
-    fn poll_read(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: ReadBufCursor<'_>) -> Poll<Result<(), io::Error>> {
+    fn poll_read(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: hyper::rt::ReadBufCursor<'_>) -> Poll<Result<(), io::Error>> {
         self.project().reader.poll_read(cx, buf)
     }
 }
