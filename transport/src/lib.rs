@@ -1,9 +1,6 @@
 pub(crate) type BoxError = Box<dyn std::error::Error + Send + Sync>;
 pub(crate) type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub use native::WsConnectionInfo;
-
 use futures_util::{ready, sink::Sink};
 use pin_project::pin_project;
 use thiserror::Error;
@@ -112,7 +109,10 @@ impl WsConnector {
         }
 
         let (ws_stream, _) = tokio_tungstenite::connect_async(request).await?;
-        Ok(WsConnection::from_combined_channel(ws_stream))
+        Ok(WsConnection::from_combined_channel(
+            ws_stream,
+            EmptyConnectInfo,
+        ))
     }
 }
 
@@ -151,18 +151,22 @@ impl Future for WsConnecting {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct EmptyConnectInfo;
+
 #[pin_project]
-pub struct WsConnection {
+pub struct WsConnection<CI = EmptyConnectInfo> {
     #[pin]
     pub(crate) sink: WsConnectionSink,
     #[pin]
     pub(crate) reader: hyper_util::rt::TokioIo<WsConnectionReader>,
+    pub(crate) info: CI,
 }
 
 type WsConnectionSink = Box<dyn Sink<Message, Error = Error> + Unpin + Send>;
 type WsConnectionReader = Box<dyn AsyncRead + Unpin + Send>;
 
-impl hyper::rt::Read for WsConnection {
+impl<T> hyper::rt::Read for WsConnection<T> {
     fn poll_read(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -172,7 +176,7 @@ impl hyper::rt::Read for WsConnection {
     }
 }
 
-impl hyper::rt::Write for WsConnection {
+impl<T> hyper::rt::Write for WsConnection<T> {
     fn poll_write(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -193,7 +197,7 @@ impl hyper::rt::Write for WsConnection {
     }
 }
 
-impl AsyncRead for WsConnection {
+impl<T> AsyncRead for WsConnection<T> {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -204,7 +208,7 @@ impl AsyncRead for WsConnection {
     }
 }
 
-impl AsyncWrite for WsConnection {
+impl<T> AsyncWrite for WsConnection<T> {
     fn poll_write(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,

@@ -9,8 +9,8 @@ use hyper_util::client::legacy::connect::Connection;
 use hyper_util::rt::TokioIo;
 use std::io;
 
-impl WsConnection {
-    pub fn from_combined_channel<S>(ws_stream: S) -> Self
+impl<T> WsConnection<T> {
+    pub fn from_combined_channel<S>(ws_stream: S, info: T) -> Self
     where
         S: Sink<Message, Error = TungsteniteError>
             + Stream<Item = Result<Message, TungsteniteError>>
@@ -39,23 +39,20 @@ impl WsConnection {
         Self {
             sink: Box::new(sink),
             reader: TokioIo::new(reader),
+            info,
         }
     }
 }
 
-#[derive(Clone)]
-#[non_exhaustive]
-pub struct WsConnectionInfo {}
-
-impl Connected for WsConnection {
-    type ConnectInfo = WsConnectionInfo;
+impl<T: Clone + Send + Sync + 'static> Connected for WsConnection<T> {
+    type ConnectInfo = T;
 
     fn connect_info(&self) -> Self::ConnectInfo {
-        WsConnectionInfo {}
+        self.info.clone()
     }
 }
 
-impl Connection for WsConnection {
+impl<T> Connection for WsConnection<T> {
     fn connected(&self) -> hyper_util::client::legacy::connect::Connected {
         hyper_util::client::legacy::connect::Connected::new()
     }
