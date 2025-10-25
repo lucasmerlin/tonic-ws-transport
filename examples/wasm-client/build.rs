@@ -1,6 +1,6 @@
 fn main() {
-    tonic_build::configure()
+    tonic_prost_build::configure()
         .build_server(false)
-        .compile(&["protos/helloworld.proto"], &["protos"])
+        .compile_protos(&["protos/helloworld.proto"], &["protos"])
         .unwrap();
 }

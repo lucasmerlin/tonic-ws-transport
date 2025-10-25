@@ -15,8 +15,9 @@ path = "src/client.rs"
 
 [dependencies]
 tonic-ws-transport = { path = "../../transport", features = ["native"] }
-tonic = { version = "0.11.0", features = ["transport", "codegen", "prost"] }
-prost = "0.12.3"
+tonic = { version = "0.14.1", features = ["transport", "codegen"] }
+tonic-prost = "0.14.2"
+prost = "0.14.1"
 tokio = { version = "1.1.1", features = ["full"] }
 futures-util = "0.3.12"
 tokio-tungstenite = "0.23"
@@ -24,4 +25,4 @@ tokio-stream = { version = "0.1.2", features = ["net"] }
 hyper-util = "0.1.5"
 
 [build-dependencies]
-tonic-build = "0.10.2"
+tonic-prost-build = "0.14.1"
