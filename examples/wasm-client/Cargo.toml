@@ -22,6 +22,7 @@ wasm-bindgen = "0.2.70"
 wasm-bindgen-futures = "0.4.20"
 wasm-logger = "0.2.0"
 web-sys = "0.3.47"
+getrandom = { version = "0.3", features = ["wasm_js"] }
 
 [build-dependencies]
 # Note: no "transport" feature => generated client does not have transport dependent code

@@ -42,7 +42,7 @@ pub async fn connect(dst: http::Uri) -> Result<super::WsConnection, Error> {
         handlers: client.handlers.clone(),
     };
     let messages_sink = sink.with(|msg| match msg {
-        tungstenite::Message::Binary(data) => future::ready(Ok(data)),
+        tungstenite::Message::Binary(data) => future::ready(Ok(data.to_vec())),
         _ => unreachable!(), // this sink supports only binary data
     });
 
