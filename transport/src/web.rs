@@ -53,7 +53,7 @@ pub async fn connect(dst: http::Uri) -> Result<super::WsConnection, Error> {
     };
     let bytes_stream = bytes_stream
         .map_ok(bytes::Bytes::from)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
+        .map_err(std::io::Error::other);
 
     Ok(super::WsConnection {
         sink: Box::new(messages_sink),
