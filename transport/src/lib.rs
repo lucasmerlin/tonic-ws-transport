@@ -14,6 +14,7 @@ use std::pin::Pin;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::Arc;
 use std::task::{Context, Poll};
+use bytes::Bytes;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native;
@@ -184,7 +185,7 @@ impl<T> hyper::rt::Write for WsConnection<T> {
     ) -> Poll<Result<usize, io::Error>> {
         let mut self_ = self.project();
         ready!(self_.sink.as_mut().poll_ready(cx)?);
-        self_.sink.start_send(Message::Binary(buf.to_vec()))?;
+        self_.sink.start_send(Message::Binary(Bytes::copy_from_slice(buf)))?;
         Poll::Ready(Ok(buf.len()))
     }
 
@@ -216,7 +217,7 @@ impl<T> AsyncWrite for WsConnection<T> {
     ) -> Poll<Result<usize, io::Error>> {
         let mut self_ = self.project();
         ready!(self_.sink.as_mut().poll_ready(cx)?);
-        self_.sink.start_send(Message::Binary(buf.to_vec()))?;
+        self_.sink.start_send(Message::Binary(Bytes::copy_from_slice(buf)))?;
         Poll::Ready(Ok(buf.len()))
     }
 

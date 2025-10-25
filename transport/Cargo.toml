@@ -15,17 +15,17 @@ http = "1"
 pin-project = "1.0.5"
 thiserror = "1.0.23"
 tokio = { version = "1.34.0", default-features = false, features = ["rt"] }
-tokio-util = { version = "0.6.3", default-features = false, features = ["io"] }
+tokio-util = { version = "0.7.16", default-features = false, features = ["io"] }
 tracing = "0.1"
 tower-service = "0.3.3"
-tungstenite = { version = "0.24", default-features = false }
+tungstenite = { version = "0.28.0", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.34.0", default-features = false, features = ["rt", "net"] }
 tower = { version = "0.5.2", default-features = false }
 hyper = { version = "1", default-features = false }
 hyper-util = "0.1"
-tokio-tungstenite = { version = "0.24" }
+tokio-tungstenite = { version = "0.28.0" }
 tonic = { version = "0.14.1", default-features = false, features = ["transport"] }
 headers = { version = "0.4.0" }
 
@@ -35,7 +35,7 @@ tower = { version = "0.5.2", default-features = false, features = ["load", "limi
 tokio-stream = "0.1"
 hyper = { version = "1", default-features = false, features = ["client", "http2"] }
 hyper-util = { version = "0.1", default-features = false, features = ["http2", "tokio"] }
-getrandom = { version = "0.2.2", features = ["js"] }
+getrandom = { version = "0.3.4", features = [] }
 js-sys = { version = "0.3.47" }
 tonic = { version = "0.14.1", default-features = false }
 wasm-bindgen = { version = "0.2.70" }
