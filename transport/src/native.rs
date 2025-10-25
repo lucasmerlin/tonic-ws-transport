@@ -19,7 +19,24 @@ impl<T> WsConnection<T> {
             + 'static,
     {
         let (sink, stream) = ws_stream.split();
+        Self::from_split_channels(sink, stream, info)
+    }
 
+    pub fn from_split_channels<S, St>(
+        sink: S,
+        stream: St,
+        info: T,
+    ) -> Self
+    where
+        S: Sink<Message, Error = TungsteniteError>
+            + Send
+            + Unpin
+            + 'static,
+        St: Stream<Item = Result<Message, TungsteniteError>>
+            + Send
+            + Unpin
+            + 'static,
+    {
         let sink = sink.sink_err_into();
 
         let bytes_stream = stream.filter_map(|msg| {
