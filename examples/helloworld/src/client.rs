@@ -1,7 +1,7 @@
 use hello_world::greeter_client::GreeterClient;
 use hello_world::HelloRequest;
 
-use tonic_ws_transport::WsConnector;
+use tonic_ws_transport::{Endpoint, WsConnector};
 
 pub mod hello_world {
     tonic::include_proto!("helloworld");
@@ -9,7 +9,7 @@ pub mod hello_world {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let endpoint = tonic::transport::Endpoint::from_static("ws://127.0.0.1:3012");
+    let endpoint = Endpoint::from_static("ws://127.0.0.1:3012");
     let channel = endpoint.connect_with_connector(WsConnector::new()).await?;
 
     let mut client = GreeterClient::new(channel);
@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let response = client.say_hello(request).await?;
 
-    println!("RESPONSE={:?}", response);
+    println!("RESPONSE={response:?}");
 
     Ok(())
 }

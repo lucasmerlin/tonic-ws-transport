@@ -5,9 +5,9 @@ use futures_util::{future, sink::Sink, stream::Stream, SinkExt, StreamExt};
 use tonic::transport::server::Connected;
 use tungstenite::{Error as TungsteniteError, Message};
 
-use std::io;
 use hyper_util::client::legacy::connect::Connection;
 use hyper_util::rt::TokioIo;
+use std::io;
 
 impl WsConnection {
     pub fn from_combined_channel<S>(ws_stream: S) -> Self
@@ -32,7 +32,7 @@ impl WsConnection {
                     TungsteniteError::ConnectionClosed,
                 ))),
                 Ok(Message::Frame(_)) => None,
-                Err(e) => Some(Err(io::Error::new(io::ErrorKind::Other, e))),
+                Err(e) => Some(Err(io::Error::other(e))),
             })
         });
         let reader = Box::new(tokio_util::io::StreamReader::new(bytes_stream));

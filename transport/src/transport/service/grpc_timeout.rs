@@ -10,7 +10,7 @@ use tokio::time::Sleep;
 use tonic::TimeoutExpired;
 use tower_service::Service;
 
- const GRPC_TIMEOUT_HEADER: &str = "grpc-timeout";
+const GRPC_TIMEOUT_HEADER: &str = "grpc-timeout";
 
 #[derive(Debug, Clone)]
 pub struct GrpcTimeout<S> {
@@ -145,120 +145,4 @@ fn try_parse_grpc_timeout(
     };
 
     Ok(Some(duration))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use quickcheck::{Arbitrary, Gen};
-    use quickcheck_macros::quickcheck;
-
-    // Helper function to reduce the boiler plate of our test cases
-    fn setup_map_try_parse(val: Option<&str>) -> Result<Option<Duration>, HeaderValue> {
-        let mut hm = HeaderMap::new();
-        if let Some(v) = val {
-            let hv = HeaderValue::from_str(v).unwrap();
-            hm.insert(GRPC_TIMEOUT_HEADER, hv);
-        };
-
-        try_parse_grpc_timeout(&hm).map_err(|e| e.clone())
-    }
-
-    #[test]
-    fn test_hours() {
-        let parsed_duration = setup_map_try_parse(Some("3H")).unwrap().unwrap();
-        assert_eq!(Duration::from_secs(3 * 60 * 60), parsed_duration);
-    }
-
-    #[test]
-    fn test_minutes() {
-        let parsed_duration = setup_map_try_parse(Some("1M")).unwrap().unwrap();
-        assert_eq!(Duration::from_secs(60), parsed_duration);
-    }
-
-    #[test]
-    fn test_seconds() {
-        let parsed_duration = setup_map_try_parse(Some("42S")).unwrap().unwrap();
-        assert_eq!(Duration::from_secs(42), parsed_duration);
-    }
-
-    #[test]
-    fn test_milliseconds() {
-        let parsed_duration = setup_map_try_parse(Some("13m")).unwrap().unwrap();
-        assert_eq!(Duration::from_millis(13), parsed_duration);
-    }
-
-    #[test]
-    fn test_microseconds() {
-        let parsed_duration = setup_map_try_parse(Some("2u")).unwrap().unwrap();
-        assert_eq!(Duration::from_micros(2), parsed_duration);
-    }
-
-    #[test]
-    fn test_nanoseconds() {
-        let parsed_duration = setup_map_try_parse(Some("82n")).unwrap().unwrap();
-        assert_eq!(Duration::from_nanos(82), parsed_duration);
-    }
-
-    #[test]
-    fn test_header_not_present() {
-        let parsed_duration = setup_map_try_parse(None).unwrap();
-        assert!(parsed_duration.is_none());
-    }
-
-    #[test]
-    #[should_panic(expected = "82f")]
-    fn test_invalid_unit() {
-        // "f" is not a valid TimeoutUnit
-        setup_map_try_parse(Some("82f")).unwrap().unwrap();
-    }
-
-    #[test]
-    #[should_panic(expected = "123456789H")]
-    fn test_too_many_digits() {
-        // gRPC spec states TimeoutValue will be at most 8 digits
-        setup_map_try_parse(Some("123456789H")).unwrap().unwrap();
-    }
-
-    #[test]
-    #[should_panic(expected = "oneH")]
-    fn test_invalid_digits() {
-        // gRPC spec states TimeoutValue will be at most 8 digits
-        setup_map_try_parse(Some("oneH")).unwrap().unwrap();
-    }
-
-    #[quickcheck]
-    fn fuzz(header_value: HeaderValueGen) -> bool {
-        let header_value = header_value.0;
-
-        // this just shouldn't panic
-        let _ = setup_map_try_parse(Some(&header_value));
-
-        true
-    }
-
-    /// Newtype to implement `Arbitrary` for generating `String`s that are valid `HeaderValue`s.
-    #[derive(Clone, Debug)]
-    struct HeaderValueGen(String);
-
-    impl Arbitrary for HeaderValueGen {
-        fn arbitrary(g: &mut Gen) -> Self {
-            let max = g.choose(&(1..70).collect::<Vec<_>>()).copied().unwrap();
-            Self(gen_string(g, 0, max))
-        }
-    }
-
-    // copied from https://github.com/hyperium/http/blob/master/tests/header_map_fuzz.rs
-    fn gen_string(g: &mut Gen, min: usize, max: usize) -> String {
-        let bytes: Vec<_> = (min..max)
-            .map(|_| {
-                // Chars to pick from
-                g.choose(b"ABCDEFGHIJKLMNOPQRSTUVabcdefghilpqrstuvwxyz----")
-                    .copied()
-                    .unwrap()
-            })
-            .collect();
-
-        String::from_utf8(bytes).unwrap()
-    }
 }

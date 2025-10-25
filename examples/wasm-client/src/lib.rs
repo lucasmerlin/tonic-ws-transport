@@ -28,19 +28,19 @@ pub async fn say_hello() -> String {
         .await
         .expect("failed to connect");
 
-    log::info!("Connected to {}", URL);
+    log::info!("Connected to {URL}");
 
     let mut client = GreeterClient::new(channel);
 
     let request = tonic::Request::new(HelloRequest {
         name: "Tonic".into(),
     });
-    log::info!("REQUEST={:?}", request);
+    log::info!("REQUEST={request:?}");
 
     let response = client.say_hello(request).await.expect("RPC call failed");
-    log::info!("RESPONSE={:?}", response);
+    log::info!("RESPONSE={response:?}");
 
-    format!("{:?}", response)
+    format!("{response:?}")
 }
 
 struct WasmBindgenExecutor {}

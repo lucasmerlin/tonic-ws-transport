@@ -19,14 +19,11 @@ pub enum EndpointType {
 #[derive(Clone)]
 pub struct Endpoint {
     pub uri: EndpointType,
-    fallback_uri: Uri,
     pub origin: Option<Uri>,
     pub user_agent: Option<HeaderValue>,
     pub timeout: Option<Duration>,
     pub concurrency_limit: Option<usize>,
     pub rate_limit: Option<(u64, Duration)>,
-    #[cfg(feature = "_tls-any")]
-    pub tls: Option<TlsConnector>,
     pub buffer_size: Option<usize>,
     pub init_stream_window_size: Option<u32>,
     pub init_connection_window_size: Option<u32>,
@@ -38,7 +35,6 @@ pub struct Endpoint {
     pub http2_keep_alive_timeout: Option<Duration>,
     pub http2_keep_alive_while_idle: Option<bool>,
     pub http2_max_header_list_size: Option<u32>,
-    pub connect_timeout: Option<Duration>,
     pub http2_adaptive_window: Option<bool>,
     pub local_address: Option<IpAddr>,
     pub executor: SharedExec,
@@ -54,26 +50,17 @@ impl Endpoint {
         D::Error: Into<crate::BoxError>,
     {
         let me = dst.try_into().map_err(|e| Error::from_source(e.into()))?;
-        #[cfg(feature = "_tls-any")]
-        if let EndpointType::Uri(uri) = &me.uri {
-            if me.tls.is_none() && uri.scheme() == Some(&http::uri::Scheme::HTTPS) {
-                return me.tls_config(ClientTlsConfig::new().with_enabled_roots());
-            }
-        }
         Ok(me)
     }
 
     fn new_uri(uri: Uri) -> Self {
         Self {
             uri: EndpointType::Uri(uri.clone()),
-            fallback_uri: uri,
             origin: None,
             user_agent: None,
             concurrency_limit: None,
             rate_limit: None,
             timeout: None,
-            #[cfg(feature = "_tls-any")]
-            tls: None,
             buffer_size: None,
             init_stream_window_size: None,
             init_connection_window_size: None,
@@ -85,7 +72,6 @@ impl Endpoint {
             http2_keep_alive_timeout: None,
             http2_keep_alive_while_idle: None,
             http2_max_header_list_size: None,
-            connect_timeout: None,
             http2_adaptive_window: None,
             executor: SharedExec::tokio(),
             local_address: None,
@@ -183,23 +169,6 @@ impl Endpoint {
     pub fn timeout(self, dur: Duration) -> Self {
         Endpoint {
             timeout: Some(dur),
-            ..self
-        }
-    }
-
-    /// Apply a timeout to connecting to the uri.
-    ///
-    /// Defaults to no timeout.
-    ///
-    /// ```
-    /// # use tonic::transport::Endpoint;
-    /// # use std::time::Duration;
-    /// # let mut builder = Endpoint::from_static("https://example.com");
-    /// builder.connect_timeout(Duration::from_secs(5));
-    /// ```
-    pub fn connect_timeout(self, dur: Duration) -> Self {
-        Endpoint {
-            connect_timeout: Some(dur),
             ..self
         }
     }
@@ -305,22 +274,6 @@ impl Endpoint {
         }
     }
 
-    /// Configures TLS for the endpoint.
-    #[cfg(feature = "_tls-any")]
-    pub fn tls_config(self, tls_config: ClientTlsConfig) -> Result<Self, Error> {
-        match &self.uri {
-            EndpointType::Uri(uri) => Ok(Endpoint {
-                tls: Some(
-                    tls_config
-                        .into_tls_connector(uri)
-                        .map_err(Error::from_source)?,
-                ),
-                ..self
-            }),
-            EndpointType::Uds(_) => Err(Error::new(error::Kind::InvalidTlsConfigForUds)),
-        }
-    }
-
     /// Set the value of `TCP_NODELAY` option for accepted connections. Enabled by default.
     pub fn tcp_nodelay(self, enabled: bool) -> Self {
         Endpoint {
@@ -383,11 +336,7 @@ impl Endpoint {
     }
 
     pub fn connector<C>(&self, c: C) -> service::Connector<C> {
-        service::Connector::new(
-            c,
-            #[cfg(feature = "_tls-any")]
-            self.tls.clone(),
-        )
+        service::Connector::new(c)
     }
 
     /// Set the local address.
@@ -400,14 +349,11 @@ impl Endpoint {
         }
     }
 
-
     /// Connect with a custom connector.
     ///
     /// This allows you to build a [Channel](struct.Channel.html) that uses a non-HTTP transport.
     /// See the `uds` example for an example on how to use this function to build channel that
     /// uses a Unix socket transport.
-    ///
-    /// The [`connect_timeout`](Endpoint::connect_timeout) will still be applied.
     pub async fn connect_with_connector<C>(&self, connector: C) -> Result<Channel, Error>
     where
         C: Service<Uri> + Send + 'static,
@@ -417,14 +363,7 @@ impl Endpoint {
     {
         let connector = self.connector(connector);
 
-        if let Some(connect_timeout) = self.connect_timeout {
-            todo!();
-            // let mut connector = hyper_timeout::TimeoutConnector::new(connector);
-            // connector.set_connect_timeout(Some(connect_timeout));
-            Channel::connect(connector, self.clone()).await
-        } else {
-            Channel::connect(connector, self.clone()).await
-        }
+        Channel::connect(connector, self.clone()).await
     }
 
     /// Connect with a custom connector lazily.
@@ -442,14 +381,7 @@ impl Endpoint {
         crate::BoxError: From<C::Error> + Send,
     {
         let connector = self.connector(connector);
-        if let Some(connect_timeout) = self.connect_timeout {
-            todo!();
-            // let mut connector = hyper_timeout::TimeoutConnector::new(connector);
-            // connector.set_connect_timeout(Some(connect_timeout));
-            Channel::new(connector, self.clone())
-        } else {
-            Channel::new(connector, self.clone())
-        }
+        Channel::new(connector, self.clone())
     }
 
     /// Get the endpoint uri.
@@ -470,11 +402,6 @@ impl Endpoint {
     /// Get the value of `TCP_NODELAY` option for accepted connections.
     pub fn get_tcp_nodelay(&self) -> bool {
         self.tcp_nodelay
-    }
-
-    /// Get the connect timeout.
-    pub fn get_connect_timeout(&self) -> Option<Duration> {
-        self.connect_timeout
     }
 
     /// Get whether TCP keepalive messages are enabled on accepted connections.

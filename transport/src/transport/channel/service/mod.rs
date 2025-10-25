@@ -10,7 +10,6 @@ use self::reconnect::Reconnect;
 mod connection;
 pub use self::connection::Connection;
 
-
 mod io;
 use self::io::BoxedIo;
 
@@ -19,4 +18,3 @@ pub use self::connector::Connector;
 
 mod executor;
 pub use self::executor::{Executor, SharedExec};
-

@@ -1,5 +1,5 @@
 pub(crate) type BoxError = Box<dyn std::error::Error + Send + Sync>;
-pub (crate) type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+pub(crate) type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use native::WsConnectionInfo;
@@ -20,9 +20,19 @@ use std::task::{Context, Poll};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native;
+pub mod transport;
 #[cfg(target_arch = "wasm32")]
 mod web;
-pub mod transport;
+
+#[cfg(target_arch = "wasm32")]
+pub type Endpoint = transport::channel::Endpoint;
+#[cfg(not(target_arch = "wasm32"))]
+pub type Endpoint = tonic::transport::channel::Endpoint;
+
+#[cfg(target_arch = "wasm32")]
+pub type Channel = transport::Channel;
+#[cfg(not(target_arch = "wasm32"))]
+pub type Channel = tonic::transport::Channel;
 
 #[derive(Debug, Error)]
 #[non_exhaustive]
@@ -38,7 +48,7 @@ pub enum Error {
 
 impl From<Error> for io::Error {
     fn from(e: Error) -> io::Error {
-        io::Error::new(io::ErrorKind::Other, e)
+        io::Error::other(e)
     }
 }
 
@@ -131,7 +141,7 @@ pub struct WsConnecting {
 
 type ConnectResult = Result<WsConnection, Error>;
 
-type BoxConnecting = Pin<Box<dyn Future<Output=ConnectResult> + Send>>;
+type BoxConnecting = Pin<Box<dyn Future<Output = ConnectResult> + Send>>;
 
 impl Future for WsConnecting {
     type Output = ConnectResult;
@@ -153,13 +163,21 @@ type WsConnectionSink = Box<dyn Sink<Message, Error = Error> + Unpin + Send>;
 type WsConnectionReader = Box<dyn AsyncRead + Unpin + Send>;
 
 impl hyper::rt::Read for WsConnection {
-    fn poll_read(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: hyper::rt::ReadBufCursor<'_>) -> Poll<Result<(), io::Error>> {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: hyper::rt::ReadBufCursor<'_>,
+    ) -> Poll<Result<(), io::Error>> {
         self.project().reader.poll_read(cx, buf)
     }
 }
 
 impl hyper::rt::Write for WsConnection {
-    fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize, io::Error>> {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<Result<usize, io::Error>> {
         let mut self_ = self.project();
         ready!(self_.sink.as_mut().poll_ready(cx)?);
         self_.sink.start_send(Message::Binary(buf.to_vec()))?;
@@ -167,29 +185,31 @@ impl hyper::rt::Write for WsConnection {
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
-        self.project()
-            .sink
-            .poll_flush(cx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        self.project().sink.poll_flush(cx).map_err(io::Error::other)
     }
 
     fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
-        self.project()
-            .sink
-            .poll_close(cx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        self.project().sink.poll_close(cx).map_err(io::Error::other)
     }
 }
 
 impl AsyncRead for WsConnection {
-    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf) -> Poll<Result<(), io::Error>> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf,
+    ) -> Poll<Result<(), io::Error>> {
         let mut pinned = std::pin::pin!(self.reader.inner_mut());
         pinned.as_mut().poll_read(cx, buf)
     }
 }
 
 impl AsyncWrite for WsConnection {
-    fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize, io::Error>> {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<Result<usize, io::Error>> {
         let mut self_ = self.project();
         ready!(self_.sink.as_mut().poll_ready(cx)?);
         self_.sink.start_send(Message::Binary(buf.to_vec()))?;
@@ -197,16 +217,10 @@ impl AsyncWrite for WsConnection {
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
-        self.project()
-            .sink
-            .poll_flush(cx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        self.project().sink.poll_flush(cx).map_err(io::Error::other)
     }
 
     fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
-        self.project()
-            .sink
-            .poll_close(cx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        self.project().sink.poll_close(cx).map_err(io::Error::other)
     }
 }

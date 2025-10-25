@@ -5,10 +5,7 @@ use std::task::{Context, Poll};
 use hyper::rt;
 // use hyper_util::client::legacy::connect::{Connected as HyperConnected, Connection};
 
-pub trait Io:
-    rt::Read + rt::Write + Send + 'static
-{
-}
+pub trait Io: rt::Read + rt::Write + Send + 'static {}
 
 impl<T> Io for T where T: rt::Read + rt::Write + Send + 'static {}
 

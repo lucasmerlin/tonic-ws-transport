@@ -1,4 +1,4 @@
-use crate::Error;
+use crate::{transport, Channel, Endpoint, Error, WsConnector};
 
 use futures_util::{sink::Sink, stream::Stream};
 use js_sys::Uint8Array;
@@ -9,11 +9,26 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{MessageEvent, WebSocket};
 
+use hyper_util::rt::TokioIo;
 use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
-use hyper_util::rt::TokioIo;
+
+impl Endpoint {
+    /// Create a ws channel from this config.
+    pub async fn connect(&self) -> Result<Channel, transport::Error> {
+        self.connect_with_connector(WsConnector::new()).await
+    }
+
+    /// Create a ws channel from this config.
+    ///
+    /// The channel returned by this method does not attempt to connect to the endpoint until first
+    /// use.
+    pub fn connect_lazy(&self) -> Channel {
+        self.connect_with_connector_lazy(WsConnector::new())
+    }
+}
 
 pub async fn connect(dst: http::Uri) -> Result<super::WsConnection, Error> {
     use futures_util::{future, stream::TryStreamExt, SinkExt};

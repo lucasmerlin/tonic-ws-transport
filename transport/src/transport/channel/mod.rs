@@ -5,7 +5,7 @@ pub mod service;
 
 pub use endpoint::Endpoint;
 
-use self::service::{Connection, Executor, SharedExec};
+use self::service::{Connection, Executor};
 use bytes::Bytes;
 use http::{
     uri::{InvalidUri, Uri},
@@ -18,7 +18,6 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tokio::sync::mpsc::{channel, Sender};
 
 use hyper::rt;
 use tonic::body::Body;
@@ -96,7 +95,6 @@ impl Channel {
         let uri = Uri::from_maybe_shared(s.into())?;
         Ok(Self::builder(uri))
     }
-
 
     /// Create a new [`Channel`] using a custom connector to the provided [Endpoint].
     ///

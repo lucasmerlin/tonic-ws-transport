@@ -1,7 +1,7 @@
 use super::{AddOrigin, Reconnect, SharedExec, UserAgent};
-use tonic::{
-body::Body,
-};
+use crate::transport::service::GrpcTimeout;
+use crate::transport::Endpoint;
+use crate::BoxFuture;
 use http::{Request, Response, Uri};
 use hyper::rt;
 use hyper::{client::conn::http2::Builder, rt::Executor};
@@ -10,13 +10,15 @@ use std::{
     fmt,
     task::{Context, Poll},
 };
+use tonic::body::Body;
 use tower::load::Load;
-use tower::{layer::Layer, limit::{concurrency::ConcurrencyLimitLayer, rate::RateLimitLayer}, ServiceBuilder, ServiceExt};
 use tower::util::BoxService;
+use tower::{
+    layer::Layer,
+    limit::{concurrency::ConcurrencyLimitLayer, rate::RateLimitLayer},
+    ServiceBuilder, ServiceExt,
+};
 use tower_service::Service;
-use crate::BoxFuture;
-use crate::transport::Endpoint;
-use crate::transport::service::GrpcTimeout;
 
 pub struct Connection {
     inner: BoxService<Request<Body>, Response<Body>, crate::BoxError>,
@@ -75,10 +77,7 @@ impl Connection {
         }
     }
 
-    pub async fn connect<C>(
-        connector: C,
-        endpoint: Endpoint,
-    ) -> Result<Self, crate::BoxError>
+    pub async fn connect<C>(connector: C, endpoint: Endpoint) -> Result<Self, crate::BoxError>
     where
         C: Service<Uri> + Send + 'static,
         C::Error: Into<crate::BoxError> + Send,

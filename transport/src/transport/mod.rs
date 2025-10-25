@@ -11,4 +11,3 @@ pub use self::channel::{Channel, Endpoint};
 pub use self::error::Error;
 
 // pub use hyper::{body::Body, Uri};
-
