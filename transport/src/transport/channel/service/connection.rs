@@ -37,6 +37,7 @@ impl Connection {
             .initial_connection_window_size(endpoint.init_connection_window_size)
             .keep_alive_interval(endpoint.http2_keep_alive_interval)
             .timer(TokioTimer::new())
+            .max_pending_accept_reset_streams(0)
             .clone();
 
         if let Some(val) = endpoint.http2_keep_alive_timeout {
